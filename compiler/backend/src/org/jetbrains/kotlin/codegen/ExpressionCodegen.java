@@ -3980,7 +3980,8 @@ public class ExpressionCodegen extends KtVisitor<StackValue, StackValue> impleme
         assert operationDescriptor != null;
         if (arrayType.getSort() == Type.ARRAY &&
             indices.size() == 1 &&
-            isInt(operationDescriptor.getValueParameters().get(0).getType())) {
+            isInt(operationDescriptor.getValueParameters().get(0).getType()) &&
+            (type == null || !InlineClassesUtilsKt.isInlineClassType(type))) {
             assert type != null;
             Type elementType;
             if (KotlinBuiltIns.isArray(type)) {
@@ -4012,7 +4013,12 @@ public class ExpressionCodegen extends KtVisitor<StackValue, StackValue> impleme
             );
 
             Type elementType = isGetter ? callableMethod.getReturnType() : ArrayUtil.getLastElement(argumentTypes);
-            return StackValue.collectionElement(collectionElementReceiver, elementType, resolvedGetCall, resolvedSetCall, this);
+            KotlinType elementKotlinType = isGetter ?
+                                           operationDescriptor.getReturnType() :
+                                           CollectionsKt.last(operationDescriptor.getValueParameters()).getType();
+            return StackValue.collectionElement(
+                    collectionElementReceiver, elementType, elementKotlinType, resolvedGetCall, resolvedSetCall, this
+            );
         }
     }
 
