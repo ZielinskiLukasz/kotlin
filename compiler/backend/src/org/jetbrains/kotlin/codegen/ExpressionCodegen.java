@@ -100,9 +100,7 @@ import static org.jetbrains.kotlin.codegen.inline.InlineCodegenUtilsKt.*;
 import static org.jetbrains.kotlin.resolve.BindingContext.*;
 import static org.jetbrains.kotlin.resolve.BindingContextUtils.getDelegationConstructorCall;
 import static org.jetbrains.kotlin.resolve.BindingContextUtils.isVarCapturedInClosure;
-import static org.jetbrains.kotlin.resolve.DescriptorUtils.isEnumClass;
-import static org.jetbrains.kotlin.resolve.DescriptorUtils.isEnumEntry;
-import static org.jetbrains.kotlin.resolve.DescriptorUtils.isObject;
+import static org.jetbrains.kotlin.resolve.DescriptorUtils.*;
 import static org.jetbrains.kotlin.resolve.jvm.AsmTypes.*;
 import static org.jetbrains.kotlin.types.expressions.ExpressionTypingUtils.isFunctionExpression;
 import static org.jetbrains.kotlin.types.expressions.ExpressionTypingUtils.isFunctionLiteral;
@@ -2092,7 +2090,15 @@ public class ExpressionCodegen extends KtVisitor<StackValue, StackValue> impleme
                 KtValueArgument valueArgument = CollectionsKt.firstOrNull(expression.getValueArguments());
                 if (valueArgument == null) return null;
 
-                return gen(valueArgument.getArgumentExpression());
+                SimpleType inlineClassType = ((ClassDescriptor) descriptor.getContainingDeclaration()).getDefaultType();
+
+                Type underlyingType = typeMapper.mapType(inlineClassType);
+                KotlinType underlyingKotlinType = InlineClassesUtilsKt.unsubstitutedUnderlyingType(inlineClassType);
+
+                gen(valueArgument.getArgumentExpression()).put(underlyingType, underlyingKotlinType, v);
+
+                // initial argument might be coerced, so use type of the underlying parameter here
+                return StackValue.argumentOfInlineClassConstructor(underlyingType, inlineClassType);
             }
 
             return generateNewCall(expression, resolvedCall);
